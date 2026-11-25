@@ -2,15 +2,21 @@
 //!
 //! Request: {"op": "...", ...}. Response: a JSON object, always with "ok".
 //! - {"op":"canon","dialect":"py-u8"|"py-ascii"|"chap"|"py-indent2","text":"<json>"}
-//!     -> {"ok":true,"out":"<canonical text>","sha256":"<hex of out>"}
+//!   -> {"ok":true,"out":"<canonical text>","sha256":"<hex of out>"}
 //! - {"op":"verify","format":"gate","rows":[{"seq","body","prev","hash"}...]}
 //! - {"op":"verify","format":"verifylog","text":"<jsonl file text>"}
 //! - {"op":"verify","format":"tfx","text":"<ledger jsonl>","anchor":{...}|null}
 //! - {"op":"verify","format":"chap","entries":[...]}
 //! - {"op":"verify","format":"vdecl-receipt","receipt":{...},"pubkey":"<hex>"}
 //! - {"op":"verify","format":"vdecl-seal","seal":{...},"pubkey":"<hex>"}
-//!     -> {"ok":bool,"format":..,"rows":n,"head":..,"first_bad":n|null,"problems":[..]}
-//! - {"op":"version"} -> {"ok":true,"version":"0.1.0"}
+//!   -> {"ok":bool,"format":..,"rows":n,"head":..,"first_bad":n|null,"problems":[..]}
+//! - {"op":"verify","format":"handoff","doc":{...},"pubkey":"<hex>","observed":{"<ref>":"<sha256>"}|null}
+//!   -> the verdict above plus "case", "scope", "rederive_required", "rederive" counts and "items";
+//!   a present "observed" (even {}) requires every item re-derived, else ok is false;
+//!   "observed" missing or null means integrity only (scope "integrity-only")
+//! - {"op":"taint","doc":{...},"pubkey":"<hex>","revoked":{"sources":["<sha256>"],"steps":[n]}}
+//!   -> {"ok": no step tainted, "tainted":[{"seq","reasons"}]} (or the failed verify, "tainted": null)
+//! - {"op":"version"} -> {"ok":true,"version":"0.2.0"}
 #![forbid(unsafe_code)]
 
 use alloc::string::{String, ToString};
@@ -179,11 +185,37 @@ fn dispatch(req: &Value) -> Result<Value> {
                 }
                 "vdecl-receipt" => verify_vdecl_receipt(field(req, "receipt")?, field_str(req, "pubkey")?)?,
                 "vdecl-seal" => verify_vdecl_seal(field(req, "seal")?, field_str(req, "pubkey")?)?,
+                "handoff" => {
+                    let obs = observed_from(req.get("observed"))?;
+                    let r = crate::handoff::verify(field(req, "doc")?, field_str(req, "pubkey")?, obs.as_deref())?;
+                    return Ok(r.to_value());
+                }
                 other => return Err(Error::new(alloc::format!("unknown format \"{}\"", other))),
             };
             Ok(v.to_value())
         }
+        "taint" => {
+            let empty = Value::Null;
+            let rv = req.get("revoked").unwrap_or(&empty);
+            let (rep, tainted) = crate::handoff::taint(field(req, "doc")?, field_str(req, "pubkey")?, rv)?;
+            Ok(crate::handoff::taint_value(&rep, &tainted))
+        }
         other => Err(Error::new(alloc::format!("unknown op \"{}\"", other))),
+    }
+}
+
+fn observed_from(v: Option<&Value>) -> Result<Option<Vec<(String, String)>>> {
+    match v {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Object(items)) => {
+            let mut out = Vec::new();
+            for (k, x) in items {
+                let h = x.as_str().ok_or_else(|| Error::new("observed values must be sha256 strings"))?;
+                out.push((k.clone(), h.to_string()));
+            }
+            Ok(Some(out))
+        }
+        _ => Err(Error::new("\"observed\" must be an object of ref -> sha256")),
     }
 }
 

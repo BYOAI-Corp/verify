@@ -1,7 +1,8 @@
 [package]
 name = "byoai-chain"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+rust-version = "1.87"
 description = "BYOAI receipt and hash-chain core: byte-identical drop-in for the five BYOAI Python formats"
 license = "Apache-2.0"
 publish = false
@@ -17,7 +18,7 @@ required-features = ["cli"]
 
 [features]
 default = []
-cli = ["dep:rusqlite"]
+cli = ["dep:rusqlite", "dep:rustix", "ed25519-dalek/pkcs8", "ed25519-dalek/pem", "ed25519-dalek/std"]
 python = ["dep:pyo3"]
 jni = ["dep:jni"]
 cabi = []
@@ -29,6 +30,11 @@ ed25519-dalek = { version = "2", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 base64 = { version = "0.22", default-features = false, features = ["alloc"] }
 rusqlite = { version = "0.37", features = ["bundled"], optional = true }
+rustix = { version = "1", features = ["fs"], optional = true }
 jni = { version = "0.21", default-features = false, optional = true }
 pyo3 = { version = "0.26", features = ["extension-module", "abi3-py310"], optional = true }
 
+
+[dev-dependencies]
+# heap leak tests (tests/heap_*.rs); never built into a shipped binary
+dhat = "=0.3.3"

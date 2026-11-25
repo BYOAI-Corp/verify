@@ -266,7 +266,7 @@ pub fn chap_verify_export(entries: &[Value]) -> ChainReport {
             continue;
         }
         let sig = env.get("sig").and_then(|s| s.as_str()).unwrap_or("");
-        let kid = if sig.matches(':').count() >= 2 { sig.splitn(3, ':').nth(1) } else { None };
+        let kid = if sig.matches(':').count() >= 2 { sig.split(':').nth(1) } else { None };
         let from = p.get("from").and_then(|f| f.as_str()).unwrap_or("");
         let pubk = kid.and_then(|kid| keys.iter().find(|((f, k), _)| f == from && k == kid).map(|(_, v)| v));
         let stripped = env.without("sig");

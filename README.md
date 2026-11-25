@@ -7,6 +7,7 @@ holds the code that checks it, so you never have to take "verified" on trust.
   `RECEIPT.json`, a seal signed with Ed25519) and verifies one.
 - **byoai-chain**: BYOAI's receipt and hash-chain core. Among its formats, `vdecl-seal` checks the
   same seal on its own: a second, independent way to verify.
+  From 0.2.0 it also writes and checks **case handoff receipts** (see below).
 
 ## Verify a BYOAI release
 
@@ -53,12 +54,49 @@ The signature covers the seal in a fixed canonical form (sorted keys, no spaces,
 cannot be edited without breaking. `upstream` records the open-source sources a release was built
 from, and `checks` records the checks it passed before sealing.
 
+## Case handoff receipts (byoai-chain 0.2.0)
+
+A handoff (`byoai.handoff/0.1`) is a signed, hash-chained record of an analyst's steps: for each
+step, the sources it read (with their sha256 and when they were fetched), what it produced, and
+which earlier steps it built on. Anyone holding the sources can re-derive every finding without
+trusting the analyst.
+
+```bash
+openssl genpkey -algorithm ed25519 -out key.pem && chmod 600 key.pem
+byoai-chain handoff mint --steps steps.jsonl --sources ./sources --case CASE-1 --analyst "A. Analyst" \
+  --key key.pem --out handoff.json
+byoai-chain verify --format handoff handoff.json --pubkey <hex> --sources ./sources
+byoai-chain taint handoff.json --pubkey <hex> --revoked revoked.json
+```
+
+- Each line of `steps.jsonl` holds `action`, `tool`, `sources` `[{ref, fetched_at}]`, `products`
+  `[{ref}]`, `depends_on` (earlier step numbers) and `checked_at` (UTC `YYYY-MM-DDTHH:MM:SSZ`).
+  With `--sources`, mint fills in each sha256 from `<dir>/<ref>`.
+- `verify` without `--sources` checks integrity only and says so. With `--sources` every source and
+  product is hashed again: `VERIFIED`, `UNGROUNDED` (the file differs) or `UNCHECKED`; anything left
+  unchecked fails the verdict. Refs are plain relative paths and are never read through a link.
+- `taint` marks every step that reads or produced a revoked file (by sha256), uses a tainted step's
+  output, or depends on a tainted step. A revocation that matches nothing in the handoff is refused.
+- The receipt never claims more than was checked: identity is `ID_UNCHECKED` and times are
+  `self-asserted`. The step model follows in-toto's materials and products; the seal is the same
+  Ed25519 construction as `vdecl-seal`.
+
+The five earlier formats are unchanged and give byte-identical results to 0.1.0.
+
 ## Build and test
 
 ```bash
 cargo build --release
 bash proof/proof_release.sh target/release/byoai-release target/release/byoai-chain   # ends RELEASE_PROOF_GREEN
+cargo build --release -p byoai-chain --features cli
+bash proof/proof_handoff.sh target/release/byoai-chain [<byoai-chain 0.1.0>] [target/release/byoai-release]
+                                                      # ends PROOF_GREEN (needs openssl, python3 cryptography)
+cargo test --release -p byoai-chain --features cli --test heap_handoff --test heap_control -- --test-threads=1
 ```
+
+Memory: the handoff path is safe Rust (`#![forbid(unsafe_code)]`, which the proof checks), and the
+heap test runs the handoff verify and taint calls under the `dhat` allocator and requires the live
+heap to return to where it was; its control leaks on purpose and must be seen.
 
 To build the `byoai-chain` command as well: `cargo build --release -p byoai-chain --features cli`.
 

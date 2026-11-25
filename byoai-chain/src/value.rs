@@ -427,7 +427,7 @@ fn shortest_digits(f: f64) -> (String, i32) {
     if !(lo_ok && hi_ok) || lo_t.len().max(hi.len()) > d.len() {
         return (d, e);
     }
-    let lo_even = (lo.as_bytes()[lo.len() - 1] - b'0') % 2 == 0;
+    let lo_even = (lo.as_bytes()[lo.len() - 1] - b'0').is_multiple_of(2);
     if lo_even { (lo_t, xe) } else { (hi, he) }
 }
 
