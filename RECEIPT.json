@@ -1,0 +1,35 @@
+{
+  "seal": {
+    "format": "byoai.release/0.1",
+    "repo": "byoai-corp/verify",
+    "release": "v0.2.1-downloads",
+    "issued_at": "2026-11-25T19:29:25Z",
+    "files": 3,
+    "manifest": "MANIFEST.sha256",
+    "manifest_sha256": "f96b49a401ca77613352ca8998ee2be7c6c8b97686d654057453dfddba9dd078",
+    "upstream": [],
+    "checks": [
+      {
+        "name": "built-from",
+        "result": "d4cd51e245adf56a6b1362ff22c1ddbd9095a32f"
+      },
+      {
+        "name": "release-proof-static",
+        "result": "RELEASE_PROOF_GREEN 14/14"
+      },
+      {
+        "name": "handoff-proof-static",
+        "result": "PROOF_GREEN (58/58 passed)"
+      },
+      {
+        "name": "web-checker",
+        "result": "same answers as the command line on 1506 requests; wasm sha256 a1094ea45fbb77acefca03543686c366ef7a4aeda6d5046c5979c096a801075c"
+      }
+    ],
+    "pubkey": "bb1de39b94a44708e3abf583a9689fa3658e247ff7dbd96703f0c216ab8e7154"
+  },
+  "sig": {
+    "alg": "ed25519",
+    "sig_hex": "e2a0b586bd448da54f66153558d120413831295aaf8a23fe24e987e60d511e359326bffb50d6a56a937a6281d7d519f8517a723c44c598a8b90419f830a7a004"
+  }
+}
