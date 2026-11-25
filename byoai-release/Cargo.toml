@@ -1,0 +1,13 @@
+[package]
+name = "byoai-release"
+version = "0.1.0"
+edition = "2021"
+description = "Seal a BYOAI release (a manifest of every file, signed with Ed25519) and verify it"
+license = "Apache-2.0"
+
+[dependencies]
+byoai-chain = { path = "../byoai-chain" }
+sha2 = "0.10"
+hex = "0.4"
+getrandom = "0.2"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
