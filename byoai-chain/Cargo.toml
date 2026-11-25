@@ -1,6 +1,6 @@
 [package]
 name = "byoai-chain"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 rust-version = "1.87"
 description = "BYOAI receipt and hash-chain core: byte-identical drop-in for the five BYOAI Python formats"

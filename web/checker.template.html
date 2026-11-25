@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- No network at all: nothing on this page can load or send anything. The verifier is inside
+     this file (WebAssembly); your receipt and source files are read in your browser only. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src '@SCRIPT_HASH@' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>BYOAI receipt checker @VERSION@</title>
+<style>
+  :root { --ink:#1b1f24; --muted:#5b6470; --line:#d9dee4; --bg:#f7f8fa; --card:#fff;
+          --ok:#0f6b3a; --okbg:#e6f4ec; --bad:#9b1c1c; --badbg:#fbeaea; --warn:#7a4b00; --warnbg:#fff4e0; --accent:#1f4fd1; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#e8ebef; --muted:#a3acb8; --line:#333a44; --bg:#14171b; --card:#1c2026;
+            --ok:#5fd39a; --okbg:#12301f; --bad:#ff8a8a; --badbg:#3a1616; --warn:#ffc266; --warnbg:#3a2a10; --accent:#8fb0ff; } }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width:880px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; } h2 { font-size:1.1rem; margin:0 0 8px; }
+  p.lead { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:0 0 16px; }
+  label { font-weight:600; display:block; margin:0 0 6px; }
+  .hint { color:var(--muted); font-size:.9rem; font-weight:400; }
+  textarea, input[type=text], select { width:100%; font:14px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--ink);
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px; }
+  textarea { min-height:110px; resize:vertical; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; padding:6px 12px; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; padding:10px 18px; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .drop { border:2px dashed var(--line); border-radius:10px; padding:14px; text-align:center; color:var(--muted); }
+  .drop.over { border-color:var(--accent); color:var(--ink); }
+  #verdict { display:none; border-radius:10px; padding:16px; margin:0 0 16px; border:1px solid var(--line); }
+  #verdict.ok { display:block; background:var(--okbg); color:var(--ok); }
+  #verdict.bad { display:block; background:var(--badbg); color:var(--bad); }
+  #verdict.warn { display:block; background:var(--warnbg); color:var(--warn); }
+  #verdict .big { font-size:1.4rem; font-weight:700; }
+  #verdict p { margin:6px 0 0; color:var(--ink); }
+  table { width:100%; border-collapse:collapse; font-size:.92rem; }
+  th, td { text-align:left; border-bottom:1px solid var(--line); padding:6px 4px; vertical-align:top; word-break:break-word; }
+  .lab { font-weight:700; white-space:nowrap; }
+  .lab.VERIFIED { color:var(--ok); } .lab.UNGROUNDED { color:var(--bad); } .lab.UNCHECKED { color:var(--warn); }
+  ul.problems { margin:6px 0 0; padding-left:20px; color:var(--ink); }
+  details summary { cursor:pointer; font-weight:600; }
+  pre { white-space:pre-wrap; word-break:break-all; font-size:.8rem; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px; max-height:260px; overflow:auto; }
+  footer { color:var(--muted); font-size:.82rem; margin-top:24px; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Check a BYOAI or Sworn receipt</h1>
+  <p class="lead">This page checks a receipt on your own computer. Nothing is uploaded: the checker is built into this file and the page is not allowed to use the network.</p>
+
+  <div class="card">
+    <label for="receipt">1. The receipt <span class="hint">— drop the file here, choose it, or paste its text</span></label>
+    <div class="drop" id="drop">Drop a receipt file here, or <button type="button" id="pick">choose a file</button>
+      <input type="file" id="file" hidden></div>
+    <textarea id="receipt" spellcheck="false" placeholder='{"handoff": ..., "sig": ...}' aria-describedby="detected"></textarea>
+    <div class="row"><span class="hint" id="detected">No receipt yet.</span></div>
+    <div class="row" id="anchorRow" hidden>
+      <label for="anchor" style="margin:0">Anchor <span class="hint">— optional, for a ledger: the anchor file that came with it</span></label>
+      <textarea id="anchor" spellcheck="false" style="min-height:50px"></textarea>
+    </div>
+    <details style="margin-top:8px"><summary>Type of receipt (normally found automatically)</summary>
+      <select id="format" aria-label="Type of receipt">
+        <option value="auto">Find it automatically</option>
+        <option value="handoff">Case handoff receipt</option>
+        <option value="vdecl-receipt">Verified Declaration receipt</option>
+        <option value="vdecl-seal">Release seal (RECEIPT.json)</option>
+        <option value="tfx">Ticket ledger (one JSON line per row)</option>
+        <option value="chap">Custody export</option>
+        <option value="verifylog">Call log (one JSON line per call)</option>
+        <option value="gate">Gate log</option>
+      </select></details>
+  </div>
+
+  <div class="card" id="keyCard">
+    <label for="pubkey">2. Whose signature to check <span class="hint">— the public key the sender published (64 hex characters)</span></label>
+    <input type="text" id="pubkey" spellcheck="false" autocomplete="off" placeholder="64 hex characters">
+    <div class="row"><button type="button" id="useByoai">Use BYOAI's release key</button>
+      <span class="hint">BYOAI's key is <code>@BYOAI_KEY_SHORT@…</code>, the one published on github.com/BYOAI-Corp. Only use it for receipts BYOAI signed.</span></div>
+  </div>
+
+  <div class="card" id="srcCard" hidden>
+    <label>3. The source files <span class="hint">— optional, for a case handoff: lets the checker confirm each source is the file the trail names</span></label>
+    <div class="row"><button type="button" id="pickDir">Choose the sources folder</button><button type="button" id="pickFiles">or choose files</button>
+      <input type="file" id="dir" webkitdirectory multiple hidden><input type="file" id="files" multiple hidden>
+      <span class="hint" id="srcInfo">No sources chosen: only the signature and chain are checked.</span></div>
+    <p class="hint">Choosing the folder matches each source by its path inside the folder, as the command line does. Choosing single files matches them by file name only.</p>
+    <details style="margin-top:8px"><summary>Check what a revoked source affects (taint)</summary>
+      <p class="hint">Paste what was revoked, e.g. <code>{"sources":["&lt;sha256&gt;"]}</code> or <code>{"steps":[2]}</code>. The checker lists every step and product built on it.</p>
+      <textarea id="revoked" spellcheck="false" style="min-height:60px"></textarea></details>
+  </div>
+
+  <div class="row" style="margin:0 0 16px"><button type="button" class="primary" id="check" disabled>Check the receipt</button>
+    <span class="hint" id="status">Loading the checker…</span></div>
+
+  <div id="verdict" role="status" aria-live="polite"><div class="hint" id="vKind"></div><div class="big" id="vBig"></div><p id="vText"></p><ul class="problems" id="vProblems"></ul></div>
+  <div class="card" id="itemsCard" hidden><h2>Each source and product</h2><table><thead><tr><th>Result</th><th>Step</th><th>Role</th><th>File</th></tr></thead><tbody id="items"></tbody></table></div>
+  <div class="card" id="taintCard" hidden><h2>Affected by what was revoked</h2><table><thead><tr><th>Step</th><th>Why</th></tr></thead><tbody id="taint"></tbody></table></div>
+  <div class="card" id="rawCard" hidden><details><summary>The checker's full answer</summary><pre id="raw"></pre></details></div>
+
+  <div class="card"><h2>What a result means</h2>
+    <p><b>VERIFIED</b> (signed receipts only: case handoffs, Verified Declaration receipts, release seals) means the receipt has not been changed since it was signed, nothing is missing from it, and it was signed by the key you gave. For a case handoff with source files, each source marked VERIFIED is byte for byte the file the trail names.</p>
+    <p><b>CHAIN INTACT — NOT SIGNED</b> (ticket ledgers, call logs, gate logs, custody exports) means the rows fit together, nothing more. These files carry no signature: anyone can build a chain like this. Rely on one only together with a signed seal or anchor from someone you trust. Without its anchor, a missing last row cannot be seen.</p>
+    <p><b>NOT VERIFIED</b> or <b>NOT INTACT</b> means at least one check failed; the reasons are listed. Do not rely on the receipt.</p>
+    <p><b>What it does not prove:</b> who the signer is as a person (a receipt says <code>ID_UNCHECKED</code> unless an identity check was done) and exactly when it was made (time is <code>self-asserted</code>). It proves the record is intact and which key signed it.</p></div>
+
+  <footer>byoai-chain @VERSION@ · checker @CHECKER_VERSION@ · built-in verifier sha256 <code id="wasmSha">@WASM_SHA256@</code> (this page recomputes it when it loads: <span id="wasmShaCheck">…</span>). Source: github.com/BYOAI-Corp/verify, Apache-2.0.</footer>
+</main>
+
+<script>
+"use strict";
+const WASM_B64 = "@WASM_B64@";
+const WASM_SHA256 = "@WASM_SHA256@";
+const BYOAI_KEY = "@BYOAI_KEY@";
+
+// byoai-chain web loader, unchanged from bindings/byoai_chain_web_v0_1_0.js (byoai-chain 0.1.0).
+async function loadByoaiChain(source) {
+  const bytes = typeof source === "string" ? await (await fetch(source)).arrayBuffer() : source;
+  const { instance } = await WebAssembly.instantiate(bytes, {});
+  const { memory, bc_alloc, bc_free, bc_call } = instance.exports;
+  const enc = new TextEncoder();
+  const dec = new TextDecoder("utf-8", { fatal: true });
+  return {
+    memory,
+    call(requestJson, { leakControl = false } = {}) {
+      const b = enc.encode(requestJson);
+      const p = bc_alloc(b.length);
+      new Uint8Array(memory.buffer, p, b.length).set(b);
+      const r = bc_call(p, b.length);
+      bc_free(p, b.length);
+      const rp = Number(r >> 32n), rn = Number(r & 0xffffffffn);
+      const out = dec.decode(new Uint8Array(memory.buffer, rp, rn).slice());
+      if (!leakControl) bc_free(rp, rn);
+      return out;
+    },
+  };
+}
+
+const $ = (id) => document.getElementById(id);
+const hex = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+let chain = null, observed = null;
+
+const NAMES = { handoff: "Case handoff receipt", "vdecl-receipt": "Verified Declaration receipt", "vdecl-seal": "Release seal",
+  tfx: "Ticket ledger", chap: "Custody export", verifylog: "Call log", gate: "Gate log" };
+const NEEDS_KEY = { handoff: true, "vdecl-receipt": true, "vdecl-seal": true };
+const SIGNED = NEEDS_KEY;
+
+function detect(text) {
+  const t = text.trim();
+  if (!t) return null;
+  try {
+    const v = JSON.parse(t);
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      if ("handoff" in v && "sig" in v) return "handoff";
+      if ("seal" in v && "sig" in v) return "vdecl-seal";
+      if ("body" in v && "sig" in v) return "vdecl-receipt";
+      if (typeof v.row_sha === "string" && "prev_sha" in v) return "tfx";
+    }
+    if (Array.isArray(v) && v.length && v[0] && typeof v[0] === "object") {
+      if ("envelope" in v[0] && "prev_hash" in v[0]) return "chap";
+      if ("seq" in v[0] && "body" in v[0] && "prev" in v[0] && "hash" in v[0]) return "gate";
+    }
+    return null;
+  } catch (_) {
+    const first = t.split("\n").find((l) => l.trim());
+    try { const o = JSON.parse(first); return typeof o.row_sha === "string" && "prev_sha" in o ? "tfx" : "verifylog"; }
+    catch (_) { return null; }
+  }
+}
+
+function currentFormat() {
+  const sel = $("format").value;
+  return sel === "auto" ? detect($("receipt").value) : sel;
+}
+
+function refresh() {
+  const f = currentFormat();
+  $("detected").textContent = !$("receipt").value.trim() ? "No receipt yet."
+    : f ? "Type: " + NAMES[f] + ($("format").value === "auto" ? " (found automatically)" : " (chosen)")
+        : "Could not tell what kind of receipt this is. Choose its type below.";
+  $("keyCard").hidden = !!f && !NEEDS_KEY[f];
+  $("srcCard").hidden = f !== "handoff";
+  $("anchorRow").hidden = f !== "tfx";
+  $("check").disabled = !chain || !f;
+}
+
+function buildRequest(f, text) {
+  const key = $("pubkey").value.trim().toLowerCase();
+  const parse = () => JSON.parse(text);
+  switch (f) {
+    case "handoff": {
+      const rv = $("revoked").value.trim();
+      if (rv) return { op: "taint", doc: parse(), pubkey: key, revoked: JSON.parse(rv) };
+      return { op: "verify", format: "handoff", doc: parse(), pubkey: key, observed: observed };
+    }
+    case "vdecl-receipt": return { op: "verify", format: f, receipt: parse(), pubkey: key };
+    case "vdecl-seal": return { op: "verify", format: f, seal: parse(), pubkey: key };
+    case "tfx": { const a = $("anchor").value.trim(); return { op: "verify", format: f, text: text, anchor: a ? JSON.parse(a) : null }; }
+    case "verifylog": return { op: "verify", format: f, text: text };
+    case "chap": return { op: "verify", format: f, entries: parse() };
+    case "gate": return { op: "verify", format: f, rows: parse() };
+  }
+}
+
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+function cell(tr, text, cls) { const td = document.createElement("td"); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); }
+
+function show(f, req, res) {
+  const v = $("verdict"), big = $("vBig"), txt = $("vText"), probs = $("vProblems");
+  clear(probs); clear($("items")); clear($("taint"));
+  $("itemsCard").hidden = true; $("taintCard").hidden = true;
+  const ok = res.ok === true;
+  const rederive = res.rederive || null;
+  const integrityOnly = f === "handoff" && res.scope === "integrity-only";
+  const isTaint = req.op === "taint";
+  const notes = [];
+  $("vKind").textContent = "Checked as: " + NAMES[f] + (SIGNED[f] ? " (signed)" : " (not signed)");
+  if (isTaint && Array.isArray(res.tainted) && res.tainted.length) { v.className = "warn"; big.textContent = "AFFECTED — " + res.tainted.length + " step(s) depend on what was revoked"; }
+  else if (isTaint && Array.isArray(res.tainted)) { v.className = "ok"; big.textContent = "NOT AFFECTED — nothing depends on what was revoked"; }
+  else if (isTaint) { v.className = "bad"; big.textContent = "TAINT NOT COMPUTED"; }
+  else if (!SIGNED[f] && ok && res.rows > 0) { v.className = "warn"; big.textContent = "CHAIN INTACT — NOT SIGNED";
+    notes.push("This file carries no signature: anyone can build a chain like this. It shows the rows fit together, not who made them. Rely on it only together with a signed seal or anchor from someone you trust.");
+    if (f === "tfx" && req.anchor === null) notes.push("No anchor was given, so a missing last row cannot be detected."); }
+  else if (!SIGNED[f] && ok) { v.className = "bad"; big.textContent = "NOTHING TO CHECK — the file has no rows"; }
+  else if (!SIGNED[f]) { v.className = "bad"; big.textContent = "NOT INTACT"; }
+  else if (ok && !integrityOnly) { v.className = "ok"; big.textContent = "VERIFIED"; }
+  else if (ok) { v.className = "warn"; big.textContent = "VERIFIED — signature and chain only"; }
+  else { v.className = "bad"; big.textContent = "NOT VERIFIED"; }
+  let line = NAMES[f];
+  if (res.case) line += " for case " + res.case;
+  if (typeof res.rows === "number" && !f.startsWith("vdecl")) line += ", " + res.rows + (f === "handoff" ? (res.rows === 1 ? " step" : " steps") : (res.rows === 1 ? " row" : " rows"));
+  if (rederive) line += ". Sources: " + rederive.verified + " verified, " + rederive.ungrounded + " not matching, " + rederive.unchecked + " not checked";
+  if (integrityOnly) notes.push("No source files were given, so no source was re-checked.");
+  if (isTaint) notes.push("This was a taint check only: the source files were not compared. Clear the revoked box to check them.");
+  if (f === "vdecl-seal" && ok && req.seal && req.seal.seal) {
+    const sl = req.seal.seal;
+    notes.push("This seal covers " + sl.files + " files of " + sl.repo + " " + sl.release + ". Its file list (" + sl.manifest + ") must have SHA-256 " + sl.manifest_sha256 + ": compare that with your copy of " + sl.manifest + ", using a tool you already trust.");
+  }
+  txt.textContent = line + ". " + notes.join(" ");
+  for (const p of (res.problems || (res.error ? [res.error] : [])).concat(res.warnings || [])) { const li = document.createElement("li"); li.textContent = p; probs.appendChild(li); }
+  if (Array.isArray(res.items) && res.items.length) {
+    for (const it of res.items) { const tr = document.createElement("tr");
+      cell(tr, it.label, "lab " + it.label); cell(tr, String(it.seq)); cell(tr, it.role); cell(tr, it.ref); $("items").appendChild(tr); }
+    $("itemsCard").hidden = false;
+  }
+  if (req.op === "taint" && Array.isArray(res.tainted)) {
+    for (const t of res.tainted) { const tr = document.createElement("tr");
+      cell(tr, String(t.seq)); cell(tr, (t.reasons || []).join(", ")); $("taint").appendChild(tr); }
+    if (!res.tainted.length) { const tr = document.createElement("tr"); cell(tr, "—"); cell(tr, "Nothing in this trail depends on what was revoked."); $("taint").appendChild(tr); }
+    $("taintCard").hidden = false;
+  }
+  $("raw").textContent = JSON.stringify(res, null, 2); $("rawCard").hidden = false;
+}
+
+async function hashFiles(fileList, fromFolder) {
+  const map = {};
+  for (const file of fileList) {
+    let ref = fromFolder && file.webkitRelativePath ? file.webkitRelativePath.split("/").slice(1).join("/") : file.name;
+    map[ref] = hex(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()));
+  }
+  return map;
+}
+
+async function onSources(input, fromFolder) {
+  if (!input.files.length) return;
+  $("srcInfo").textContent = "Reading " + input.files.length + " file(s)…";
+  observed = await hashFiles(input.files, fromFolder);
+  $("srcInfo").textContent = Object.keys(observed).length + " source file(s) read in this browser and fingerprinted (SHA-256). Nothing left this computer.";
+}
+
+async function loadReceiptFile(file) { $("receipt").value = await file.text(); observed = null; $("srcInfo").textContent = "No sources chosen: only the signature and chain are checked."; refresh(); }
+
+function run() {
+  const f = currentFormat(), text = $("receipt").value;
+  let req;
+  try { req = buildRequest(f, text); }
+  catch (e) { show(f, {}, { ok: false, error: "The receipt or the revoked list is not valid JSON: " + e.message }); return; }
+  if (NEEDS_KEY[f] && !/^[0-9a-f]{64}$/.test(req.pubkey || "")) {
+    show(f, req, { ok: false, error: "Give the signer's public key: 64 hex characters." }); return; }
+  let res;
+  try { res = JSON.parse(chain.call(JSON.stringify(req))); }
+  catch (e) { res = { ok: false, error: "The checker could not read this: " + e.message }; }
+  show(f, req, res);
+}
+
+(async () => {
+  try {
+    const bytes = Uint8Array.from(atob(WASM_B64), (c) => c.charCodeAt(0));
+    const sha = hex(await crypto.subtle.digest("SHA-256", bytes));
+    $("wasmShaCheck").textContent = sha === WASM_SHA256 ? "matches" : "DOES NOT MATCH (" + sha + ")";
+    if (sha !== WASM_SHA256) throw new Error("the built-in verifier does not match its fingerprint");
+    chain = await loadByoaiChain(bytes.buffer);
+    $("status").textContent = "Ready. Everything runs in this browser.";
+  } catch (e) { $("status").textContent = "The checker could not start: " + e.message; }
+  refresh();
+})();
+
+$("receipt").addEventListener("input", refresh);
+$("format").addEventListener("change", refresh);
+$("pick").addEventListener("click", () => $("file").click());
+$("file").addEventListener("change", (e) => e.target.files[0] && loadReceiptFile(e.target.files[0]));
+$("pickDir").addEventListener("click", () => $("dir").click());
+$("pickFiles").addEventListener("click", () => $("files").click());
+$("dir").addEventListener("change", (e) => onSources(e.target, true));
+$("files").addEventListener("change", (e) => onSources(e.target, false));
+$("useByoai").addEventListener("click", () => { $("pubkey").value = BYOAI_KEY; });
+$("check").addEventListener("click", run);
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => e.preventDefault());
+const drop = $("drop");
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) loadReceiptFile(f); });
+</script>
+</body>
+</html>

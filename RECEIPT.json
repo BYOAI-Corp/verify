@@ -2,11 +2,11 @@
   "seal": {
     "format": "byoai.release/0.1",
     "repo": "byoai-corp/verify",
-    "release": "v0.2.0",
-    "issued_at": "2026-11-25T18:09:50Z",
-    "files": 30,
+    "release": "v0.2.1",
+    "issued_at": "2026-11-25T19:28:47Z",
+    "files": 33,
     "manifest": "MANIFEST.sha256",
-    "manifest_sha256": "5b08111b3a3c308115608ad8ed73fd1f3855e662b1f1cc2cc461144d3e894826",
+    "manifest_sha256": "62fba6dcb7fb766e0b87147c66af8760bb71908fc8117d1fbd4534e379e2bad9",
     "upstream": [],
     "checks": [
       {
@@ -23,13 +23,13 @@
       },
       {
         "name": "heap-test",
-        "result": "clean: 140 handoff calls, 0 live blocks left; deliberate-leak control seen"
+        "result": "calls=140 live_blocks=0->0 live_bytes=0->0 allocations=69380; control leaked_blocks=140"
       }
     ],
     "pubkey": "bb1de39b94a44708e3abf583a9689fa3658e247ff7dbd96703f0c216ab8e7154"
   },
   "sig": {
     "alg": "ed25519",
-    "sig_hex": "ac38e08b4c3b45e8829ef62b337d7f0c59cca9c7fac4afd1c464e268484bf40ccc808ee288259666bc860b80040f1ecb7bf00f961502d3e7c0c14f1064b71a0f"
+    "sig_hex": "2e3a3822f5aa068d0e6630b075839b3fe005548222f1258a5434e91759d536c1fb78108c507796c3af440d5eed4aac7fe0560d919231fb83cc30f97046908803"
   }
 }

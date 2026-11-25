@@ -9,10 +9,14 @@ holds the code that checks it, so you never have to take "verified" on trust.
   same seal on its own: a second, independent way to verify.
   From 0.2.0 it also writes and checks **case handoff receipts** (see below).
 
+**Just want to check a receipt?** Read [How to check a BYOAI or Sworn receipt](docs/CHECK_A_RECEIPT.md).
+Each [release](https://github.com/BYOAI-Corp/verify/releases/latest) has a one-file web checker that
+works offline in any browser, ready-to-run Linux programs, and a signed list of every download.
+
 ## Verify a BYOAI release
 
 ```bash
-cargo install --locked --git https://github.com/byoai-corp/verify byoai-release
+cargo install --locked --git https://github.com/BYOAI-Corp/verify byoai-release
 cd <a BYOAI repository you cloned>
 byoai-release verify . --pubkey "$(cat BYOAI_RELEASE_PUBKEY)"
 ```
@@ -92,6 +96,14 @@ cargo build --release -p byoai-chain --features cli
 bash proof/proof_handoff.sh target/release/byoai-chain [<byoai-chain 0.1.0>] [target/release/byoai-release]
                                                       # ends PROOF_GREEN (needs openssl, python3 cryptography)
 cargo test --release -p byoai-chain --features cli --test heap_handoff --test heap_control -- --test-threads=1
+```
+
+The web checker (`web/checker.template.html`, filled by `web/build_checker.sh`) is byoai-chain built
+for the browser plus the unchanged 0.1.0 web loader, in one HTML file with no network access:
+
+```bash
+cargo build --release --locked --target wasm32-unknown-unknown -p byoai-chain --features wasm --lib
+bash web/build_checker.sh target/wasm32-unknown-unknown/release/byoai_chain.wasm byoai-receipt-checker.html
 ```
 
 Memory: the handoff path is safe Rust (`#![forbid(unsafe_code)]`, which the proof checks), and the

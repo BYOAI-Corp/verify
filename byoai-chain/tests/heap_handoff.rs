@@ -28,4 +28,10 @@ fn handoff_calls_leave_nothing_on_the_heap() {
     dhat::assert!(after.total_blocks > before.total_blocks + 140, "the calls really allocated");
     dhat::assert_eq!(after.curr_blocks, before.curr_blocks, "live blocks after 140 calls");
     dhat::assert_eq!(after.curr_bytes, before.curr_bytes, "live bytes after 140 calls");
+    // read by the release script (cargo test -- --nocapture) and recorded in the seal
+    println!(
+        "HEAP_OK calls=140 live_blocks={}->{} live_bytes={}->{} allocations={}",
+        before.curr_blocks, after.curr_blocks, before.curr_bytes, after.curr_bytes,
+        after.total_blocks - before.total_blocks
+    );
 }

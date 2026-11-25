@@ -25,4 +25,5 @@ fn a_deliberate_leak_is_seen() {
     let after = dhat::HeapStats::get();
     dhat::assert_eq!(after.curr_blocks - before.curr_blocks, 140, "exactly the 140 leaked responses");
     dhat::assert!(after.curr_bytes > before.curr_bytes);
+    println!("HEAP_CONTROL_OK leaked_blocks={}", after.curr_blocks - before.curr_blocks);
 }

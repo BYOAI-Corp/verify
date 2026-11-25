@@ -12,7 +12,7 @@ W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 # python3 may be a version-manager shim (mise, pyenv, asdf) that writes into HOME: find the real
 # interpreter once, before HOME changes, and run it isolated (-I) through a wrapper on PATH
 PYREAL="$(python3 -I -c 'import sys; print(sys.executable)' 2>/dev/null)"
-mkdir -p "$W/bin"; if [ -n "$PYREAL" ] && [ -x "$PYREAL" ]; then printf '#!/bin/sh\nexec "%s" -I "$@"\n' "$PYREAL" >"$W/bin/python3"; else printf '#!/bin/sh\nexit 127\n' >"$W/bin/python3"; fi
+mkdir -p "$W/bin"; if [ -n "$PYREAL" ] && [ -x "$PYREAL" ]; then printf '#!/usr/bin/env bash\nexec %q -I "$@"\n' "$PYREAL" >"$W/bin/python3"; else printf '#!/bin/sh\nexit 127\n' >"$W/bin/python3"; fi
 chmod +x "$W/bin/python3"; export PATH="$W/bin:$PATH"
 export HOME="$W/home"; mkdir -p "$HOME"            # throwaway HOME: nothing may land in the real one
 P=0; F=0; S=0
