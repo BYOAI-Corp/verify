@@ -2,34 +2,30 @@
   "seal": {
     "format": "byoai.release/0.1",
     "repo": "byoai-corp/verify",
-    "release": "v0.2.1",
-    "issued_at": "2026-11-25T19:28:47Z",
+    "release": "v0.2.2",
+    "issued_at": "2026-11-26T01:53:53Z",
     "files": 33,
     "manifest": "MANIFEST.sha256",
-    "manifest_sha256": "62fba6dcb7fb766e0b87147c66af8760bb71908fc8117d1fbd4534e379e2bad9",
+    "manifest_sha256": "e6617962fa8b29e0ba68e8892315cd92b2caae658fb3a559225dca7c66b0f465",
     "upstream": [],
     "checks": [
       {
+        "name": "documentation-only",
+        "result": "README.md docs/CHECK_A_RECEIPT.md changed since v0.2.1 d4cd51e; code, proofs and downloads unchanged"
+      },
+      {
+        "name": "hosted-checker",
+        "result": "https://byoai-corp.github.io/verify/ serves sha256 a7dec9c61ab55c2065ed4a3185552f3c8556d7a85b189f61f0afa6874483533b, the byoai-receipt-checker_v0_1_0.html sealed in v0.2.1-downloads"
+      },
+      {
         "name": "no-outside-author-names",
         "result": "ok"
-      },
-      {
-        "name": "release-proof",
-        "result": "RELEASE_PROOF_GREEN 14/14"
-      },
-      {
-        "name": "handoff-proof",
-        "result": "PROOF_GREEN (58/58 passed)"
-      },
-      {
-        "name": "heap-test",
-        "result": "calls=140 live_blocks=0->0 live_bytes=0->0 allocations=69380; control leaked_blocks=140"
       }
     ],
     "pubkey": "bb1de39b94a44708e3abf583a9689fa3658e247ff7dbd96703f0c216ab8e7154"
   },
   "sig": {
     "alg": "ed25519",
-    "sig_hex": "2e3a3822f5aa068d0e6630b075839b3fe005548222f1258a5434e91759d536c1fb78108c507796c3af440d5eed4aac7fe0560d919231fb83cc30f97046908803"
+    "sig_hex": "3b95187c837f5f1465537548137e1d36d42b5b53f881794dd35998d4daf3f16f1734fa25c49506d89dea10e0aa58f35973c1b099b4264cac220dfb191600d809"
   }
 }

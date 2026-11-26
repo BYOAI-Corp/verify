@@ -7,6 +7,12 @@ the checker is open source and runs on your own computer.
 
 ## The quick way: the web checker
 
+**Quickest:** open https://byoai-corp.github.io/verify/ and go to step 3. This is the same checker
+as the release download, hosted on GitHub Pages. It is not allowed to use the network once loaded:
+nothing you check leaves your computer. It is for convenience only. The hosted page is not covered by
+the release seal, so it can only be checked after it has run. For a receipt you rely on as evidence,
+use the download in steps 1 and 2 and check it as described under "Checking the checker".
+
 1. Open the [latest release](https://github.com/BYOAI-Corp/verify/releases/latest) and download
    `byoai-receipt-checker_v0_1_0.html`.
 2. Open that file in any web browser (Chrome, Edge, Firefox or Safari). It works with no internet
