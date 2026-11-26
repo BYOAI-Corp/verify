@@ -238,6 +238,7 @@ mod hx {
     }
     use byoai_chain::handoff::{self, Report};
     use byoai_chain::value::{dumps, DumpOpts, Value};
+    #[cfg(unix)]
     use rustix::fs::{fstat, open, openat, statat, AtFlags, FileType, Mode, OFlags};
     use sha2::{Digest, Sha256};
     use std::io::{Read, Write};
@@ -258,6 +259,7 @@ mod hx {
     /// Open <dir>/<ref> for reading without following any symlink on the way: every component is
     /// opened with O_NOFOLLOW relative to the one before (openat), and the last must be a regular
     /// file by fstat of the opened descriptor. Absolute refs and "..", "." are refused.
+    #[cfg(unix)]
     fn open_inside(dir: &str, r: &str) -> Option<std::fs::File> {
         if !handoff::is_plain_ref(r) {
             return None;
@@ -280,6 +282,20 @@ mod hx {
             return None;
         }
         Some(std::fs::File::from(fd))
+    }
+
+    /// Windows: the same check as on Linux, done by byoai-winopen: every part is opened relative
+    /// to the handle of the folder before it (NtCreateFile with RootDirectory and OBJ_DONT_REPARSE),
+    /// a link of any kind on the way or at the end is refused, each name must be the exact stored
+    /// name (not another case, not an 8.3 short name), and the last part must be a plain file.
+    /// Absolute refs, "..", ".", '\\' and the characters Windows reserves (: * ? " < > |) are refused.
+    #[cfg(windows)]
+    fn open_inside(dir: &str, r: &str) -> Option<std::fs::File> {
+        if !handoff::is_plain_ref(r) {
+            return None;
+        }
+        let parts: Vec<&str> = r.split('/').collect();
+        byoai_winopen::open_inside(std::path::Path::new(dir), &parts)
     }
 
     /// sha256 of <dir>/<ref>, or None when it cannot be opened safely or read (stays UNCHECKED).
@@ -360,10 +376,18 @@ mod hx {
 
     fn load_seed(path: &str) -> [u8; 32] {
         use ed25519_dalek::pkcs8::DecodePrivateKey;
-        use std::os::unix::fs::PermissionsExt;
         let md = std::fs::metadata(path).unwrap_or_else(|e| die(&format!("{}: {}", path, e)));
-        if md.permissions().mode() & 0o077 != 0 {
-            die(&format!("{}: private key must be mode 600 (chmod 600 {})", path, path));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if md.permissions().mode() & 0o077 != 0 {
+                die(&format!("{}: private key must be mode 600 (chmod 600 {})", path, path));
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = md;
+            eprintln!("KEY_PERMISSIONS_UNCHECKED {}: Windows file permissions (ACLs) are not checked; keep the key where only you can read it", safe(path));
         }
         let pem = read_text(path);
         let sk = ed25519_dalek::SigningKey::from_pkcs8_pem(&pem).unwrap_or_else(|_| die(&format!("{}: not an Ed25519 PKCS#8 PEM private key", path)));
@@ -411,7 +435,9 @@ mod hx {
                 if e.kind() == std::io::ErrorKind::AlreadyExists {
                     format!("{}: exists; refusing to overwrite", out.display())
                 } else {
-                    format!("{}: {}", out.display(), e)
+                    // the output is published with a hard link so it can never overwrite a file;
+                    // FAT and exFAT drives (most USB sticks) and some network shares have none
+                    format!("{}: {} (the output folder must allow hard links: FAT/exFAT drives and some network shares do not; write to a local NTFS, ext4 or similar folder)", out.display(), e)
                 }
             })
         })();

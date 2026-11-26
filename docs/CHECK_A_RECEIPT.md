@@ -70,16 +70,32 @@ Each release lists every download, with its SHA-256, in `MANIFEST.sha256`, and s
   4. Then check the signature in `RECEIPT.json` with a checker you already trust, for example
      a copy you checked before or one you built yourself.
 
-## On the command line (Linux)
+## On the command line (Linux and Windows)
 
-The release also has ready-to-run Linux programs (x86_64, no install needed):
+The release also has ready-to-run programs for Linux and Windows (x86_64, no install needed):
 
 ```sh
-chmod +x byoai-chain_v0_2_1_linux-x86_64
-./byoai-chain_v0_2_1_linux-x86_64 verify --format handoff case.json --pubkey <key> --sources <folder>
-./byoai-chain_v0_2_1_linux-x86_64 taint case.json --pubkey <key> --revoked revoked.json
+chmod +x byoai-chain_v0_2_2_linux-x86_64
+./byoai-chain_v0_2_2_linux-x86_64 verify --format handoff case.json --pubkey <key> --sources <folder>
+./byoai-chain_v0_2_2_linux-x86_64 taint case.json --pubkey <key> --revoked revoked.json
 ```
 
-On Windows and Mac, use the web checker. It runs the same verifier, compiled for the browser, and
+On Windows, in PowerShell or a command prompt:
+
+```
+.\byoai-chain_v0_2_2_windows-x86_64.exe verify --format handoff case.json --pubkey <key> --sources <folder>
+```
+
+The Windows programs are not code-signed, so Windows SmartScreen may warn before the first run.
+Check the file's SHA-256 against `MANIFEST.sha256` first (see above). On Windows, `--sources` refuses
+symbolic links, junctions and other reparse points, on the way to a file or as the file itself,
+and needs each name to match exactly, as on Linux. A hard link is the file itself, as on Linux, so it is read. By design a
+name that matches only in another case or as an 8.3 short name (such as `CASE~1.JSO`) is refused;
+the 8.3 case is not yet tested on Windows. Use a folder on a local disk: on a network share the
+server resolves links itself, and files in a OneDrive folder may come back UNCHECKED (files that are
+not downloaded yet count as links). If a source is reported UNCHECKED, copy the folder to a local
+disk and check again.
+
+On a Mac, use the web checker. It runs the same verifier, compiled for the browser, and
 gets the same answers from it (with single source files chosen, it matches them by name only). To build the command-line tools yourself, see the
 [README](../README.md#build-and-test).

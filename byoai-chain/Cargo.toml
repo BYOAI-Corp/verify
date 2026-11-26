@@ -1,6 +1,6 @@
 [package]
 name = "byoai-chain"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 rust-version = "1.87"
 description = "BYOAI receipt and hash-chain core: byte-identical drop-in for the five BYOAI Python formats"
@@ -18,7 +18,7 @@ required-features = ["cli"]
 
 [features]
 default = []
-cli = ["dep:rusqlite", "dep:rustix", "ed25519-dalek/pkcs8", "ed25519-dalek/pem", "ed25519-dalek/std"]
+cli = ["dep:rusqlite", "dep:rustix", "dep:byoai-winopen", "ed25519-dalek/pkcs8", "ed25519-dalek/pem", "ed25519-dalek/std"]
 python = ["dep:pyo3"]
 jni = ["dep:jni"]
 cabi = []
@@ -30,9 +30,16 @@ ed25519-dalek = { version = "2", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 base64 = { version = "0.22", default-features = false, features = ["alloc"] }
 rusqlite = { version = "0.37", features = ["bundled"], optional = true }
-rustix = { version = "1", features = ["fs"], optional = true }
 jni = { version = "0.21", default-features = false, optional = true }
 pyo3 = { version = "0.26", features = ["extension-module", "abi3-py310"], optional = true }
+
+# Unix only: the safe file reads of the command line (openat with O_NOFOLLOW).
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1", features = ["fs"], optional = true }
+
+# Windows only: the same safe reads, by handle (see byoai-winopen/src/lib.rs).
+[target.'cfg(windows)'.dependencies]
+byoai-winopen = { path = "../byoai-winopen", optional = true }
 
 
 [dev-dependencies]

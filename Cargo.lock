@@ -82,9 +82,10 @@ checksum = "87a0cf66fd1eb2fb7b822cb78370d82303750809bc6ba855f3f58e517d3238db"
 
 [[package]]
 name = "byoai-chain"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "base64",
+ "byoai-winopen",
  "dhat",
  "ed25519-dalek",
  "hex",
@@ -104,6 +105,13 @@ dependencies = [
  "getrandom",
  "hex",
  "sha2",
+]
+
+[[package]]
+name = "byoai-winopen"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

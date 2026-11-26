@@ -144,7 +144,10 @@ fn keygen(a: &Args) {
         let mut f = o.open(&out).unwrap_or_else(|e| die(2, &format!("cannot write {}: {e}", out.display())));
         f.write_all(format!("{}\n", hex::encode(seed)).as_bytes()).unwrap();
     }
+    #[cfg(unix)]
     println!("KEYGEN_OK private key in {} (owner only; never shared)", out.display());
+    #[cfg(not(unix))]
+    println!("KEYGEN_OK private key in {} (KEY_PERMISSIONS_UNCHECKED: Windows file permissions were not set; keep it where only you can read it)", out.display());
     println!("PUBKEY {}", hex::encode(ed25519_public(&seed)));
 }
 

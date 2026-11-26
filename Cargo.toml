@@ -1,5 +1,5 @@
 [workspace]
-members = ["byoai-chain", "byoai-release"]
+members = ["byoai-chain", "byoai-release", "byoai-winopen"]
 resolver = "2"
 
 [profile.release]

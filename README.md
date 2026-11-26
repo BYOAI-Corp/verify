@@ -11,7 +11,7 @@ holds the code that checks it, so you never have to take "verified" on trust.
 
 **Just want to check a receipt?** Read [How to check a BYOAI or Sworn receipt](docs/CHECK_A_RECEIPT.md).
 Each [release](https://github.com/BYOAI-Corp/verify/releases/latest) has a one-file web checker that
-works offline in any browser, ready-to-run Linux programs, and a signed list of every download.
+works offline in any browser, ready-to-run Linux and Windows programs, and a signed list of every download.
 The same web checker is also hosted at https://byoai-corp.github.io/verify/, byte for byte the file
 from the release. The hosted page is for convenience: for a receipt you rely on as evidence, download
 the checker from the release and check it as the guide describes.
